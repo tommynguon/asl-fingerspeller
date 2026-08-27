@@ -4,6 +4,7 @@ import argparse
 
 from asl.collect import collect_webcam
 from asl.kaggle import ingest_kaggle
+from asl.train import train
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,11 +20,16 @@ def main(argv: list[str] | None = None) -> int:
     kaggle.add_argument("root", help="Path to asl_alphabet_train (folders A, B, ...)")
     kaggle.add_argument("--limit", type=int, default=400)
 
+    sub.add_parser("train", help="Train RF/SVM/MLP and save models/best.joblib")
+
     args = parser.parse_args(argv)
     if args.cmd == "collect":
         collect_webcam(args.label.upper(), n=args.n, camera=args.camera)
         return 0
     if args.cmd == "ingest-kaggle":
         ingest_kaggle(args.root, limit_per_label=args.limit)
+        return 0
+    if args.cmd == "train":
+        train()
         return 0
     return 1
