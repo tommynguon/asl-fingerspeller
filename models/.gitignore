@@ -1,0 +1,5 @@
+# Keep trained artifacts out until you have a real dataset.
+*.joblib
+confusion.png
+metrics.json
+!.gitkeep
