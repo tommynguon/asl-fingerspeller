@@ -34,7 +34,15 @@ class Smoother:
         return winner
 
 
-def load_model(path: Path = MODEL_PATH):
+def apply_letter(buffer: list[str], token: str) -> list[str]:
+    if token == "SPACE":
+        buffer.append(" ")
+    elif token == "DELETE":
+        if buffer:
+            buffer.pop()
+    elif token not in {"NOTHING", "J", "Z"}:
+        buffer.append(token)
+    return buffer
     if not path.exists():
         return None
     return joblib.load(path)

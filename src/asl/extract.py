@@ -8,13 +8,14 @@ import numpy as np
 from asl.features import flatten_features
 
 
-def _hands():
+def _hands(*, static: bool = True):
     import mediapipe as mp
 
     return mp.solutions.hands.Hands(
-        static_image_mode=True,
+        static_image_mode=static,
         max_num_hands=1,
         min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
         model_complexity=1,
     )
 

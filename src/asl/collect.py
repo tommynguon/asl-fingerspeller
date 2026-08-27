@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 
 from asl import LABELS
-from asl.extract import extract_from_bgr
+from asl.extract import _hands, extract_from_bgr
 from asl.features import feature_names
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,29 +38,33 @@ def collect_webcam(label: str, n: int = 80, camera: int = 0) -> int:
     if not cap.isOpened():
         raise SystemExit("could not open webcam")
     saved = 0
+    hands = _hands(static=False)
     print(f"Collecting {n} frames for {label}. Press q to stop.")
-    while saved < n:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        vis = frame.copy()
-        cv2.putText(
-            vis,
-            f"{label} {saved}/{n}",
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
-            (0, 255, 0),
-            2,
-        )
-        feats = extract_from_bgr(frame)
-        if feats is not None:
-            append_row(label, "webcam", feats)
-            saved += 1
-        cv2.imshow("asl-collect", vis)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-    cap.release()
-    cv2.destroyAllWindows()
+    try:
+        while saved < n:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            vis = frame.copy()
+            cv2.putText(
+                vis,
+                f"{label} {saved}/{n}",
+                (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 255, 0),
+                2,
+            )
+            feats = extract_from_bgr(frame, hands=hands)
+            if feats is not None:
+                append_row(label, "webcam", feats)
+                saved += 1
+            cv2.imshow("asl-collect", vis)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+    finally:
+        hands.close()
+        cap.release()
+        cv2.destroyAllWindows()
     print(f"saved {saved} rows to {CSV_PATH}")
     return saved

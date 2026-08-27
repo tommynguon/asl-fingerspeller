@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 
 from asl.collect import collect_webcam
+from asl.demo import run_demo
 from asl.kaggle import ingest_kaggle
 from asl.train import train
 
@@ -21,6 +22,11 @@ def main(argv: list[str] | None = None) -> int:
     kaggle.add_argument("--limit", type=int, default=400)
 
     sub.add_parser("train", help="Train RF/SVM/MLP and save models/best.joblib")
+    demo = sub.add_parser("demo", help="Live OpenCV webcam demo")
+    demo.add_argument("--camera", type=int, default=0)
+    web = sub.add_parser("web", help="Flask MJPEG demo at http://127.0.0.1:5056")
+    web.add_argument("--host", default="127.0.0.1")
+    web.add_argument("--port", type=int, default=5056)
 
     args = parser.parse_args(argv)
     if args.cmd == "collect":
@@ -31,5 +37,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "train":
         train()
+        return 0
+    if args.cmd == "demo":
+        return run_demo(camera=args.camera)
+    if args.cmd == "web":
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from web.app import run
+
+        run(host=args.host, port=args.port)
         return 0
     return 1

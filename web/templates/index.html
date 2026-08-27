@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ASL finger-speller</title>
+  <style>
+    body { font-family: Segoe UI, sans-serif; margin: 24px; background: #111; color: #eee; }
+    img { max-width: 720px; border: 1px solid #333; }
+    .word { font-size: 28px; letter-spacing: .08em; min-height: 40px; }
+  </style>
+</head>
+<body>
+  <h1>ASL finger-speller</h1>
+  <p>Static letters A–Y plus SPACE / DELETE. J and Z are out of scope.</p>
+  <img src="{{ url_for('video') }}" alt="webcam">
+  <p class="word" id="text"></p>
+  <button id="clear">Clear</button>
+  <script>
+    async function tick() {
+      const r = await fetch("/state");
+      const j = await r.json();
+      document.getElementById("text").textContent = j.text || "(start signing)";
+    }
+    setInterval(tick, 400);
+    document.getElementById("clear").onclick = () => fetch("/clear", {method: "POST"});
+  </script>
+</body>
+</html>
