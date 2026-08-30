@@ -2,27 +2,84 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ASL finger-speller</title>
   <style>
-    body { font-family: Segoe UI, sans-serif; margin: 24px; background: #111; color: #eee; }
-    img { max-width: 720px; border: 1px solid #333; }
-    .word { font-size: 28px; letter-spacing: .08em; min-height: 40px; }
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #070b14; color: #f7f9fc; }
+    main { width: min(960px, calc(100% - 32px)); margin: 0 auto; padding: 36px 0 56px; }
+    h1 { margin: 0 0 6px; font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -.04em; }
+    .eyebrow { color: #69dcac; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+    .lede { color: #aeb9ce; margin: 0 0 24px; }
+    .camera { overflow: hidden; border: 1px solid #25314a; border-radius: 18px; background: #111827; box-shadow: 0 24px 70px #0008; }
+    img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+    .setup { display: grid; min-height: 360px; place-items: center; padding: 36px; text-align: center; color: #c6d0e3; }
+    .setup code { color: #69dcac; }
+    [hidden] { display: none !important; }
+    .result { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 20px; }
+    .label { margin: 0 0 6px; color: #8fa0bc; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+    .word { margin: 0; font-size: clamp(1.4rem, 5vw, 2.4rem); letter-spacing: .08em; min-height: 1.3em; overflow-wrap: anywhere; }
+    button { border: 1px solid #43516b; border-radius: 10px; padding: 10px 16px; background: #162036; color: white; cursor: pointer; font: inherit; }
+    button:hover { background: #21304e; }
+    .status { margin-top: 12px; color: #8fa0bc; font-size: .9rem; }
   </style>
 </head>
 <body>
-  <h1>ASL finger-speller</h1>
-  <p>Static letters A–Y plus SPACE / DELETE. J and Z are out of scope.</p>
-  <img src="{{ url_for('video') }}" alt="webcam">
-  <p class="word" id="text"></p>
-  <button id="clear">Clear</button>
+  <main>
+    <p class="eyebrow">Real-time computer vision</p>
+    <h1>ASL finger-speller</h1>
+    <p class="lede">Hold a static letter until it locks. Use SPACE to separate words and DELETE to backspace. J and Z require motion and are outside this version.</p>
+    <section class="camera">
+      <img id="video" alt="Live webcam recognition stream" hidden>
+      <div class="setup" id="setup" hidden>
+        <p>No trained model was found.<br>Prepare data and run <code>asl train</code>, then refresh this page.</p>
+      </div>
+      <div class="result">
+        <div>
+          <p class="label">Recognized text</p>
+          <p class="word" id="text">Start signing</p>
+        </div>
+        <button id="clear" type="button">Clear text</button>
+      </div>
+    </section>
+    <p class="status" id="status">Connecting to recognizer...</p>
+  </main>
   <script>
+    let ready = false;
     async function tick() {
-      const r = await fetch("/state");
-      const j = await r.json();
-      document.getElementById("text").textContent = j.text || "(start signing)";
+      if (!ready) return;
+      try {
+        const r = await fetch("/state");
+        const j = await r.json();
+        document.getElementById("text").textContent = j.text || "Start signing";
+        document.getElementById("status").textContent = `Current sign: ${j.letter} - confidence ${(j.confidence * 100).toFixed(0)}%`;
+      } catch (_) {
+        document.getElementById("status").textContent = "Recognizer unavailable";
+      }
+    }
+    async function boot() {
+      try {
+        const health = await (await fetch("/health")).json();
+        if (!health.model_loaded) {
+          document.getElementById("setup").hidden = false;
+          document.getElementById("status").textContent = "Model setup required";
+          return;
+        }
+        document.getElementById("video").src = "{{ url_for('video') }}";
+        document.getElementById("video").hidden = false;
+        ready = true;
+        await tick();
+      } catch (_) {
+        document.getElementById("status").textContent = "Recognizer unavailable";
+      }
     }
     setInterval(tick, 400);
-    document.getElementById("clear").onclick = () => fetch("/clear", {method: "POST"});
+    boot();
+    document.getElementById("clear").onclick = async () => {
+      await fetch("/clear", {method: "POST"});
+      await tick();
+    };
   </script>
 </body>
 </html>

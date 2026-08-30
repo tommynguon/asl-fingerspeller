@@ -24,6 +24,11 @@ def _ensure_csv(path: Path) -> None:
 
 
 def append_row(label: str, source: str, features, path: Path = CSV_PATH) -> None:
+    label = label.upper()
+    if label not in LABELS:
+        raise ValueError(f"unknown label {label!r}")
+    if len(features) != len(feature_names()):
+        raise ValueError(f"expected {len(feature_names())} features, got {len(features)}")
     _ensure_csv(path)
     with path.open("a", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)

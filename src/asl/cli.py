@@ -4,6 +4,7 @@ import argparse
 
 from asl.collect import collect_webcam
 from asl.demo import run_demo
+from asl.import_landmarks import import_landmark_csv
 from asl.kaggle import ingest_kaggle
 from asl.train import train
 
@@ -21,6 +22,12 @@ def main(argv: list[str] | None = None) -> int:
     kaggle.add_argument("root", help="Path to asl_alphabet_train (folders A, B, ...)")
     kaggle.add_argument("--limit", type=int, default=400)
 
+    landmarks = sub.add_parser(
+        "ingest-landmarks", help="Normalize a MediaPipe landmark CSV for training"
+    )
+    landmarks.add_argument("csv", help="CSV containing lm0_x ... lm20_z and label")
+    landmarks.add_argument("--limit", type=int, default=1200, help="Maximum rows per label")
+
     sub.add_parser("train", help="Train RF/SVM/MLP and save models/best.joblib")
     demo = sub.add_parser("demo", help="Live OpenCV webcam demo")
     demo.add_argument("--camera", type=int, default=0)
@@ -34,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "ingest-kaggle":
         ingest_kaggle(args.root, limit_per_label=args.limit)
+        return 0
+    if args.cmd == "ingest-landmarks":
+        rows = import_landmark_csv(args.csv, limit_per_label=args.limit)
+        print(f"wrote {rows} normalized rows")
         return 0
     if args.cmd == "train":
         train()

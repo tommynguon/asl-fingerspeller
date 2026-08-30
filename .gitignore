@@ -11,13 +11,15 @@ htmlcov/
 dist/
 build/
 
-# Raw images / webcam dumps — landmarks CSV is committed, pixels are not
+# Raw images, imported landmarks, and webcam dumps
 data/raw/
 data/kaggle/
 data/webcam/
+data/landmarks.csv
 *.jpg
 *.jpeg
 *.png
+!models/confusion.png
 *.mp4
 *.avi
 

@@ -4,7 +4,8 @@ from pathlib import Path
 
 import cv2
 
-from asl.extract import extract_from_bgr, extract_from_path
+from asl import LABELS
+from asl.extract import extract_from_path
 from asl.collect import append_row
 
 KAGGLE_LABEL_MAP = {
@@ -20,7 +21,7 @@ def iter_kaggle_images(root: Path):
             continue
         raw = folder.name
         label = KAGGLE_LABEL_MAP.get(raw.lower(), raw.upper())
-        if label in {"J", "Z"}:
+        if label in {"J", "Z"} or label not in LABELS:
             continue
         for image in folder.glob("*.jpg"):
             yield label, image

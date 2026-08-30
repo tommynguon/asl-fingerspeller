@@ -14,6 +14,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
+from asl.features import FEATURE_DIM
+
 ROOT = Path(__file__).resolve().parents[2]
 CSV_PATH = ROOT / "data" / "landmarks.csv"
 MODEL_DIR = ROOT / "models"
@@ -26,6 +28,12 @@ def load_dataset(path: Path = CSV_PATH) -> tuple[np.ndarray, np.ndarray, np.ndar
         )
     df = pd.read_csv(path)
     feature_cols = [c for c in df.columns if c.startswith("l") and c[1:2].isdigit()]
+    if len(feature_cols) != FEATURE_DIM:
+        raise ValueError(f"expected {FEATURE_DIM} landmark features, found {len(feature_cols)}")
+    if df.empty:
+        raise ValueError("training dataset is empty")
+    if df[feature_cols].isna().any().any():
+        raise ValueError("training features contain missing values")
     X = df[feature_cols].to_numpy(dtype=np.float32)
     y = df["label"].astype(str).to_numpy()
     source = df["source"].astype(str).to_numpy() if "source" in df.columns else np.array(["unknown"] * len(df))
@@ -40,7 +48,7 @@ def _models() -> dict:
         "svm": Pipeline(
             [
                 ("scaler", StandardScaler()),
-                ("clf", SVC(kernel="rbf", C=8, gamma="scale")),
+                ("clf", SVC(kernel="rbf", C=8, gamma="scale", random_state=42)),
             ]
         ),
         "mlp": Pipeline(
@@ -61,6 +69,11 @@ def _models() -> dict:
 
 def train(path: Path = CSV_PATH, model_dir: Path = MODEL_DIR) -> dict:
     X, y, source = load_dataset(path)
+    labels, counts = np.unique(y, return_counts=True)
+    if len(labels) < 2:
+        raise ValueError("training requires at least two labels")
+    if int(counts.min()) < 2:
+        raise ValueError("each label needs at least two samples for a stratified split")
     X_train, X_test, y_train, y_test, src_train, src_test = train_test_split(
         X, y, source, test_size=0.2, random_state=42, stratify=y
     )
@@ -82,7 +95,7 @@ def train(path: Path = CSV_PATH, model_dir: Path = MODEL_DIR) -> dict:
         webcam_acc = float(accuracy_score(y_test[webcam_mask], best_model.predict(X_test[webcam_mask])))
 
     model_dir.mkdir(parents=True, exist_ok=True)
-    joblib.dump(best_model, model_dir / "best.joblib")
+    joblib.dump(best_model, model_dir / "best.joblib", compress=3)
     labels = sorted(set(y.tolist()))
     cm = confusion_matrix(y_test, best_pred, labels=labels)
     metrics = {

@@ -4,10 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "asl-fingerspeller"
-version = "0.1.0"
+version = "1.0.0"
 description = "Real-time ASL finger-spelling from webcam landmarks"
 requires-python = ">=3.11,<3.14"
 readme = "README.md"
+
+[project.scripts]
+asl = "asl.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

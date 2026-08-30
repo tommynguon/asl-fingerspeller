@@ -1,5 +1,6 @@
-# Keep trained artifacts out until you have a real dataset.
+# Commit the reproducible v1 model and evaluation report.
 *.joblib
-confusion.png
-metrics.json
+!best.joblib
+!confusion.png
+!metrics.json
 !.gitkeep

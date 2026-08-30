@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from threading import Lock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -14,14 +15,18 @@ from asl.infer import Smoother, load_model, predict_label
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 STATE = {"buffer": [], "letter": "NOTHING", "conf": 0.0}
+STATE_LOCK = Lock()
+SMOOTHER = Smoother()
 
 
 def gen_frames():
     import cv2
 
     model = load_model()
-    smoother = Smoother()
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        cap.release()
+        raise RuntimeError("could not open webcam")
     hands = _hands(static=False)
     try:
         while True:
@@ -32,12 +37,13 @@ def gen_frames():
             letter, conf = "NOTHING", 0.0
             if model is not None and feats is not None:
                 letter, conf = predict_label(model, feats)
-                token = smoother.push(letter)
+            with STATE_LOCK:
+                token = SMOOTHER.push(letter)
                 if token:
                     apply_letter(STATE["buffer"], token)
-            STATE["letter"] = letter
-            STATE["conf"] = conf
-            word = "".join(STATE["buffer"])
+                STATE["letter"] = letter
+                STATE["conf"] = conf
+                word = "".join(STATE["buffer"])
             cv2.putText(frame, f"{letter} {conf:.2f}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
             cv2.putText(frame, word[-40:], (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
             _, jpeg = cv2.imencode(".jpg", frame)
@@ -59,16 +65,26 @@ def video():
 
 @app.get("/state")
 def state():
-    return {
-        "letter": STATE["letter"],
-        "confidence": STATE["conf"],
-        "text": "".join(STATE["buffer"]),
-    }
+    with STATE_LOCK:
+        return {
+            "letter": STATE["letter"],
+            "confidence": STATE["conf"],
+            "text": "".join(STATE["buffer"]),
+        }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "model_loaded": load_model() is not None}
 
 
 @app.post("/clear")
 def clear():
-    STATE["buffer"] = []
+    with STATE_LOCK:
+        STATE["buffer"].clear()
+        STATE["letter"] = "NOTHING"
+        STATE["conf"] = 0.0
+        SMOOTHER.reset()
     return {"ok": True}
 
 
